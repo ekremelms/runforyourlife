@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Browser Game</title>
+    <style>
+        body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}
+
+canvas {
+    display: block;
+    background-color: white;
+}
+
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const survivor = {
+    x: canvas.width / 2 - 20,
+    y: canvas.height / 2 - 20,
+    width: 40,
+    height: 40,
+    speed: 10,
+    dx: 0,
+    dy: 0
+};
+
+const zombies = [];
+const zombieSpeed = 5;
+
+const frameRate = 1000 / 120;
+let lastRenderTime = 0;
+let startTime = Date.now();
+let highScore = 0;
+
+function drawSurvivor() {
+    ctx.beginPath();
+    ctx.arc(survivor.x, survivor.y, survivor.width / 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#333333';
+    ctx.fill();
+    ctx.closePath();
+}
+
+function drawZombie(zombie) {
+    ctx.beginPath();
+    ctx.arc(zombie.x, zombie.y, zombie.width / 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#999999';
+    ctx.fill();
+    ctx.closePath();
+}
+
+function spawnZombie() {
+    const minDistanceBetweenZombies = 80;
+    let x, y;
+    let validPosition = false;
+    let retryCounter = 0;
+    const maxRetries = 100;
+
+    while (!validPosition && retryCounter < maxRetries) {
+        const side = Math.floor(Math.random() * 4);
+
+        switch (side) {
+            case 0:
+                x = Math.random() * canvas.width;
+                y = 0;
+                break;
+            case 1:
+                x = canvas.width;
+                y = Math.random() * canvas.height;
+                break;
+            case 2:
+                x = Math.random() * canvas.width;
+                y = canvas.height;
+                break;
+            case 3:
+                x = 0;
+                y = Math.random() * canvas.height;
+                break;
+        }
+
+        validPosition = true;
+
+        for (let i = 0; i < zombies.length; i++) {
+            const existingZombie = zombies[i];
+            const distance = distanceBetween(x, y, existingZombie.x, existingZombie.y);
+
+            if (distance < existingZombie.width / 2 + minDistanceBetweenZombies) {
+                validPosition = false;
+                break;
+            }
+        }
+
+        retryCounter++;
+    }
+
+    if (validPosition) {
+        const zombie = {
+            x,
+            y,
+            width: 40,
+            height: 40
+        };
+
+        zombies.push(zombie);
+    }
+}
+
+function moveZombie(zombie) {
+    const dx = survivor.x - zombie.x;
+    const dy = survivor.y - zombie.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    zombie.x += (dx / distance) * zombieSpeed;
+    zombie.y += (dy / distance) * zombieSpeed;
+}
+
+function distanceBetween(x1, y1, x2, y2) {
+    const dx = x1 - x2;
+    const dy = y1 - y2;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function update() {
+    const targetDx = survivor.dx === 0 ? 0 : (survivor.dx > 0 ? survivor.speed : -survivor.speed);
+    const targetDy = survivor.dy === 0 ? 0 : (survivor.dy > 0 ? survivor.speed : -survivor.speed);
+
+    survivor.dx += (targetDx - survivor.dx) * 0.1;
+    survivor.dy += (targetDy - survivor.dy) * 0.1;
+
+    survivor.x += survivor.dx;
+    survivor.y += survivor.dy;
+
+    if (survivor.x < 0 || survivor.x > canvas.width) {
+        survivor.dx *= -1;
+    }
+
+    if (survivor.y < 0 || survivor.y > canvas.height) {
+        survivor.dy *= -1;
+    }
+
+    zombies.forEach(moveZombie);
+}
+
+function animate(currentTime) {
+    requestAnimationFrame(animate);
+
+    const timeSinceLastRender = currentTime - lastRenderTime;
+    if (timeSinceLastRender < frameRate) {
+        return;
+    }
+    
+    lastRenderTime = currentTime;
+
+    const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+    highScore = Math.max(highScore, elapsedTime);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    zombies.forEach(drawZombie);
+    
+    drawSurvivor();
+    drawHighScore();
+    update();
+}
+
+function keyDown(e) {
+    if (e.key === 'ArrowRight') {
+        survivor.dx = survivor.speed;
+    } else if (e.key === 'ArrowLeft') {
+        survivor.dx = -survivor.speed;
+    } else if (e.key === 'ArrowUp') {
+        survivor.dy = -survivor.speed;
+    } else if (e.key === 'ArrowDown') {
+        survivor.dy = survivor.speed;
+    }
+}
+
+function drawHighScore() {
+    ctx.font = '20px Arial';
+    ctx.fillStyle = 'black';
+    ctx.textAlign = 'right';
+    ctx.fillText(`High Score: ${highScore}s`, canvas.width - 10, canvas.height - 10);
+}
+
+function keyUp(e) {
+    if (
+        e.key === 'ArrowRight' ||
+        e.key === 'ArrowLeft'
+    ) {
+        survivor.dx = 0;
+    }
+    if (
+        e.key === 'ArrowUp' ||
+        e.key === 'ArrowDown'
+    ) {
+        survivor.dy = 0;
+    }
+}
+
+document.addEventListener('keydown', keyDown);
+document.addEventListener('keyup', keyUp);
+
+animate();
+setInterval(spawnZombie, 500);
+
+
+
+
+
+
+
+    </script>
+</body>
+</html>
